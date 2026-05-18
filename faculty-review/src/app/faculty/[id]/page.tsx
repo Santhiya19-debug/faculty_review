@@ -1,0 +1,57 @@
+import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import MainLayout from "@/components/layout/MainLayout";
+import FacultyDetailClient from "./FacultyDetailClient";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data } = await supabase.from("faculties").select("name").eq("id", id).single();
+  return { title: data ? `${data.name} — Faculty Review` : "Faculty" };
+}
+
+export default async function FacultyPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data: faculty } = await supabase
+    .from("faculties")
+    .select("*, departments(*)")
+    .eq("id", id)
+    .single();
+
+  if (!faculty) notFound();
+
+  const { data: reviews } = await supabase
+    .from("reviews")
+    .select("*, profiles(username)")
+    .eq("faculty_id", id)
+    .order("helpful_count", { ascending: false });
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Attach vote info if user is logged in
+  let reviewsWithVotes = reviews || [];
+  if (user && reviews) {
+    const { data: votes } = await supabase
+      .from("votes")
+      .select("review_id, vote_type")
+      .eq("user_id", user.id);
+    
+    const voteMap = new Map(votes?.map(v => [v.review_id, v.vote_type]) || []);
+    reviewsWithVotes = reviews.map(r => ({
+      ...r,
+      user_vote: voteMap.get(r.id) || null,
+    }));
+  }
+
+  return (
+    <MainLayout>
+      <FacultyDetailClient
+        faculty={faculty}
+        initialReviews={reviewsWithVotes}
+        currentUserId={user?.id || null}
+      />
+    </MainLayout>
+  );
+}

@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { motion } from "framer-motion";
-import { ThumbsUp, ThumbsDown, MessageSquare, Flag, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { Review } from "@/types";
-import { RATING_CATEGORIES } from "@/types";
+import { ThumbsUp, ThumbsDown, Flag, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Review, RATING_CATEGORIES } from "@/types";
 import StarRating from "@/components/ui/StarRating";
-import { getAvatarUrl, timeAgo, cn } from "@/lib/utils";
+import Avatar from "@/components/ui/Avatar";
+import { timeAgo, cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import toast from "react-hot-toast";
@@ -28,34 +27,26 @@ export default function ReviewCard({ review, onEdit, onDelete }: ReviewCardProps
   const supabase = createClient();
 
   const isOwner = user?.id === review.user_id;
+  const username = review.profiles?.username || "Anonymous";
   const contentPreview = review.content.length > 200 && !expanded
     ? review.content.slice(0, 200) + "..."
     : review.content;
 
   const handleVote = async (type: 'up' | 'down') => {
     if (!user) { toast.error("Please sign in to vote"); return; }
-
     const newVote = vote === type ? null : type;
     const prevVote = vote;
     const prevCount = helpfulCount;
-
-    // Optimistic update
     setVote(newVote);
     const diff = (newVote === 'up' ? 1 : newVote === 'down' ? -1 : 0) -
                  (prevVote === 'up' ? 1 : prevVote === 'down' ? -1 : 0);
     setHelpfulCount(prev => prev + diff);
-
     try {
       if (prevVote) {
-        await supabase.from("votes").delete()
-          .eq("review_id", review.id).eq("user_id", user.id);
+        await supabase.from("votes").delete().eq("review_id", review.id).eq("user_id", user.id);
       }
       if (newVote) {
-        await supabase.from("votes").upsert({
-          review_id: review.id,
-          user_id: user.id,
-          vote_type: newVote,
-        });
+        await supabase.from("votes").upsert({ review_id: review.id, user_id: user.id, vote_type: newVote });
       }
     } catch {
       setVote(prevVote);
@@ -77,32 +68,19 @@ export default function ReviewCard({ review, onEdit, onDelete }: ReviewCardProps
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="card p-4 sm:p-5"
-    >
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-4 sm:p-5">
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2.5">
-          <Image
-            src={getAvatarUrl(review.profiles?.username || "anon")}
-            alt="Reviewer"
-            width={34}
-            height={34}
-            className="rounded-full border border-rose-100"
-          />
+          <Avatar username={username} size="sm" />
           <div>
-            <p className="text-sm font-semibold text-gray-700">
-              {review.profiles?.username || "Anonymous"}
-            </p>
+            <p className="text-sm font-semibold text-gray-700">{username}</p>
             <p className="text-xs text-gray-400">
               {timeAgo(review.created_at)}
               {review.is_edited && <span className="ml-1 text-gray-300">(edited)</span>}
             </p>
           </div>
         </div>
-
         <div className="flex items-center gap-2">
           <StarRating rating={review.overall_rating} size={12} />
           {isOwner && (
@@ -125,8 +103,7 @@ export default function ReviewCard({ review, onEdit, onDelete }: ReviewCardProps
         </div>
       </div>
 
-      {/* Title + Content */}
-      <h4 className="font-semibold text-gray-800 text-sm mb-1.5">{review.title}</h4>
+      {/* Content — no title, just review text */}
       <p className="text-sm text-gray-600 leading-relaxed mb-3">
         {contentPreview}
         {review.content.length > 200 && (
@@ -136,13 +113,13 @@ export default function ReviewCard({ review, onEdit, onDelete }: ReviewCardProps
         )}
       </p>
 
-      {/* Mini rating bars */}
+      {/* Mini rating grid */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-4 bg-rose-50/50 rounded-xl p-3">
         {RATING_CATEGORIES.map(cat => {
           const value = review[cat.key] as number;
           return (
             <div key={cat.key} className="flex items-center gap-1.5 text-xs">
-              <span className="text-xs">{cat.emoji}</span>
+              <span>{cat.emoji}</span>
               <span className="text-gray-500 truncate flex-1">{cat.label.split(' ')[0]}</span>
               <span className="font-bold text-gray-700 shrink-0">{value}</span>
             </div>
@@ -154,27 +131,20 @@ export default function ReviewCard({ review, onEdit, onDelete }: ReviewCardProps
       <div className="flex items-center gap-3 pt-2 border-t border-rose-50">
         <button
           onClick={() => handleVote('up')}
-          className={cn(
-            "flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl transition-all",
-            vote === 'up' ? "bg-emerald-50 text-emerald-600" : "text-gray-400 hover:bg-gray-50"
-          )}
+          className={cn("flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl transition-all",
+            vote === 'up' ? "bg-emerald-50 text-emerald-600" : "text-gray-400 hover:bg-gray-50")}
         >
           <ThumbsUp size={13} />
           <span>Helpful {helpfulCount > 0 && `(${helpfulCount})`}</span>
         </button>
         <button
           onClick={() => handleVote('down')}
-          className={cn(
-            "flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl transition-all",
-            vote === 'down' ? "bg-rose-50 text-rose-500" : "text-gray-400 hover:bg-gray-50"
-          )}
+          className={cn("flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl transition-all",
+            vote === 'down' ? "bg-rose-50 text-rose-500" : "text-gray-400 hover:bg-gray-50")}
         >
           <ThumbsDown size={13} />
         </button>
-        <button
-          onClick={handleReport}
-          className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl text-gray-300 hover:text-gray-500 hover:bg-gray-50 transition-all ml-auto"
-        >
+        <button onClick={handleReport} className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl text-gray-300 hover:text-gray-500 hover:bg-gray-50 transition-all ml-auto">
           <Flag size={12} />
           <span className="hidden sm:inline">Report</span>
         </button>

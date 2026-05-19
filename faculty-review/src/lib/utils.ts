@@ -10,12 +10,33 @@ export function timeAgo(date: string) {
   return formatDistanceToNow(new Date(date), { addSuffix: true });
 }
 
-export function getAvatarUrl(username: string) {
-  return `https://api.dicebear.com/9.x/thumbs/svg?seed=${encodeURIComponent(username)}&backgroundColor=ffc9d5,ffd5dd,ffe0e6&backgroundType=gradientLinear`;
+// Returns first letter of username, uppercased
+export function getUserInitial(username: string): string {
+  return (username || "A").charAt(0).toUpperCase();
 }
 
-export function getFacultyAvatarUrl(name: string) {
-  return `https://api.dicebear.com/9.x/personas/svg?seed=${encodeURIComponent(name)}&backgroundColor=ffc9d5,ffd5dd`;
+// Deterministic pastel color based on username
+export function getAvatarColor(username: string): string {
+  const colors = [
+    "bg-blush-200 text-blush-700",
+    "bg-rose-200 text-rose-700",
+    "bg-violet-200 text-violet-700",
+    "bg-amber-200 text-amber-700",
+    "bg-emerald-200 text-emerald-700",
+    "bg-sky-200 text-sky-700",
+    "bg-pink-200 text-pink-700",
+    "bg-indigo-200 text-indigo-700",
+  ];
+  let hash = 0;
+  for (let i = 0; i < (username || "A").length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// Kept for faculty fallback placeholder color
+export function getFacultyAvatarColor(name: string): string {
+  return getAvatarColor(name);
 }
 
 export function ratingColor(rating: number): string {
@@ -31,7 +52,6 @@ export function ratingBg(rating: number): string {
 }
 
 export function renderStars(rating: number, max = 10) {
-  // Convert 10-point to 5-star
   const stars = (rating / max) * 5;
-  return Math.round(stars * 2) / 2; // Round to nearest 0.5
+  return Math.round(stars * 2) / 2;
 }

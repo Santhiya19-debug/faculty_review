@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Bell, Menu, X, ChevronDown, User, LogOut, Star, FileText } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getAvatarUrl, cn } from "@/lib/utils";
-import Image from "next/image";
+import Avatar from "@/components/ui/Avatar";
+import { cn } from "@/lib/utils";
 
 const navLinks = [
   { label: "Home", href: "/" },
@@ -78,13 +78,7 @@ export default function Navbar() {
                   onClick={() => setProfileOpen(!profileOpen)}
                   className="flex items-center gap-2 p-1 rounded-full hover:bg-rose-50 transition-colors"
                 >
-                  <Image
-                    src={getAvatarUrl(profile?.username || "user")}
-                    alt="Avatar"
-                    width={32}
-                    height={32}
-                    className="rounded-full border-2 border-blush-200"
-                  />
+                  <Avatar username={profile?.username || "user"} size="sm" />
                   <ChevronDown size={14} className="text-gray-500 hidden sm:block" />
                 </button>
 
@@ -127,7 +121,7 @@ export default function Navbar() {
                       </Link>
                       <div className="border-t border-rose-50 mt-1 pt-1">
                         <button
-                          onClick={() => { signOut(); setProfileOpen(false); }}
+                          onClick={async () => { await signOut(); setProfileOpen(false); window.location.href = "/"; }}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-rose-500 hover:bg-rose-50 transition-colors"
                         >
                           <LogOut size={15} />

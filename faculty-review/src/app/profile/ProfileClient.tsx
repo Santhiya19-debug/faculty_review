@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { LogOut, Star, FileText, Pencil, Check, X } from "lucide-react";
 import { Profile } from "@/types";
-import { getAvatarUrl, timeAgo } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils";
 import StarRating from "@/components/ui/StarRating";
+import Avatar from "@/components/ui/Avatar";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import toast from "react-hot-toast";
@@ -59,6 +59,7 @@ export default function ProfileClient({ profile, myReviews, myRequests, email }:
   const handleSignOut = async () => {
     await signOut();
     router.push("/");
+    router.refresh();
   };
 
   return (
@@ -70,13 +71,7 @@ export default function ProfileClient({ profile, myReviews, myRequests, email }:
         className="card p-5 sm:p-7 mb-6"
       >
         <div className="flex items-start gap-4">
-          <Image
-            src={getAvatarUrl(profile?.username || "user")}
-            alt="Avatar"
-            width={64}
-            height={64}
-            className="rounded-2xl border-2 border-blush-200 shrink-0"
-          />
+          <Avatar username={profile?.username || "user"} size="lg" className="rounded-2xl border-2 border-blush-100" />
           <div className="flex-1 min-w-0">
             {/* Username */}
             {editingUsername ? (

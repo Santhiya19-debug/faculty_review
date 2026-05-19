@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Star } from "lucide-react";
+import { motion } from "framer-motion";
+import { X } from "lucide-react";
 import { RATING_CATEGORIES, Review } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import toast from "react-hot-toast";
-import { cn } from "@/lib/utils";
 
 interface ReviewFormProps {
   facultyId: string;
@@ -29,25 +28,19 @@ export default function ReviewForm({ facultyId, facultyName, existingReview, onS
       [cat.key]: existingReview?.[cat.key] ?? 5,
     }), {})
   );
-  const [title, setTitle] = useState(existingReview?.title || "");
   const [content, setContent] = useState(existingReview?.content || "");
   const [loading, setLoading] = useState(false);
 
-  const handleRating = (key: string, val: number) => {
-    setRatings(prev => ({ ...prev, [key]: val }));
-  };
-
   const handleSubmit = async () => {
     if (!user) { toast.error("Please sign in first"); return; }
-    if (!title.trim() || !content.trim()) { toast.error("Please fill all fields"); return; }
-    if (content.length < 30) { toast.error("Review must be at least 30 characters"); return; }
+    if (!content.trim()) { toast.error("Please write your review"); return; }
 
     setLoading(true);
     try {
       const payload = {
         faculty_id: facultyId,
         user_id: user.id,
-        title: title.trim(),
+        title: content.trim().slice(0, 80), // auto-title from content for DB compatibility
         content: content.trim(),
         strictness: ratings.strictness,
         internal_marks: ratings.internal_marks,
@@ -107,44 +100,23 @@ export default function ReviewForm({ facultyId, facultyName, existingReview, onS
             {RATING_CATEGORIES.map(cat => (
               <div key={cat.key}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-medium text-gray-700">
-                    {cat.emoji} {cat.label}
-                  </span>
+                  <span className="text-sm font-medium text-gray-700">{cat.emoji} {cat.label}</span>
                   <span className="font-bold text-blush-500 text-sm">{ratings[cat.key]}/10</span>
                 </div>
                 <input
-                  type="range"
-                  min={1}
-                  max={10}
-                  step={1}
+                  type="range" min={1} max={10} step={1}
                   value={ratings[cat.key]}
-                  onChange={e => handleRating(cat.key, Number(e.target.value))}
+                  onChange={e => setRatings(prev => ({ ...prev, [cat.key]: Number(e.target.value) }))}
                   className="w-full accent-blush-500"
                 />
                 <div className="flex justify-between text-xs text-gray-300 mt-0.5">
-                  <span>1</span>
-                  <span>10</span>
+                  <span>1</span><span>10</span>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Title */}
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-              Review Title
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Summarize your experience..."
-              className="input-field"
-              maxLength={100}
-            />
-          </div>
-
-          {/* Content */}
+          {/* Review content — no title field */}
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
               Your Review

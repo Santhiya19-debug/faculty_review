@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { getAvatarUrl, timeAgo } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils";
 import StarRating from "@/components/ui/StarRating";
+import Avatar from "@/components/ui/Avatar";
 
 interface RecentReviewsProps {
   reviews: any[];
@@ -43,13 +43,7 @@ export default function RecentReviews({ reviews }: RecentReviewsProps) {
               <Link href={`/faculty/${review.faculty_id}`}>
                 <div className="card card-hover p-4 cursor-pointer">
                   <div className="flex items-start gap-3">
-                    <Image
-                      src={getAvatarUrl(review.profiles?.username || "anon")}
-                      alt="reviewer"
-                      width={36}
-                      height={36}
-                      className="rounded-full border border-rose-100 shrink-0"
-                    />
+                    <Avatar username={review.profiles?.username || "anon"} size="sm" className="shrink-0 mt-0.5" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-0.5">
                         <span className="text-xs font-semibold text-gray-600">

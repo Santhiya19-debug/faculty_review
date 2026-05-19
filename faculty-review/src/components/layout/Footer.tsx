@@ -29,10 +29,16 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-sm text-gray-700 mb-3">Quick Links</h4>
             <ul className="space-y-2">
-              {["Home", "Browse Faculties", "Departments", "Reviews", "Requests"].map((l) => (
-                <li key={l}>
-                  <Link href={l === "Home" ? "/" : `/${l.toLowerCase().replace(" ", "-")}`} className="text-sm text-gray-500 hover:text-blush-500 transition-colors">
-                    {l}
+              {[
+                { label: "Home", href: "/" },
+                { label: "Browse Faculties", href: "/search" },
+                { label: "Departments", href: "/search?view=departments" },
+                { label: "Reviews", href: "/search" },
+                { label: "Requests", href: "/requests" },
+              ].map((l) => (
+                <li key={l.label}>
+                  <Link href={l.href} className="text-sm text-gray-500 hover:text-blush-500 transition-colors">
+                    {l.label}
                   </Link>
                 </li>
               ))}
@@ -43,10 +49,15 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-sm text-gray-700 mb-3">Resources</h4>
             <ul className="space-y-2">
-              {["How It Works", "Review Guidelines", "FAQ", "Contact Us"].map((l) => (
-                <li key={l}>
-                  <Link href="#" className="text-sm text-gray-500 hover:text-blush-500 transition-colors">
-                    {l}
+              {[
+                { label: "How It Works", href: "/how-it-works" },
+                { label: "Review Guidelines", href: "/review-guidelines" },
+                { label: "FAQ", href: "/how-it-works" },
+                { label: "Contact Us", href: "/contact" },
+              ].map((l) => (
+                <li key={l.label}>
+                  <Link href={l.href} className="text-sm text-gray-500 hover:text-blush-500 transition-colors">
+                    {l.label}
                   </Link>
                 </li>
               ))}

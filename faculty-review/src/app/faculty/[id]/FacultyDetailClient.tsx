@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { BadgeCheck, ChevronLeft, MessageSquare, PenLine, Share2 } from "lucide-react";
+import { BadgeCheck, ChevronLeft, PenLine, Share2 } from "lucide-react";
 import { Faculty, Review, RATING_CATEGORIES } from "@/types";
 import StarRating from "@/components/ui/StarRating";
 import RatingBar from "@/components/ui/RatingBar";
 import ReviewCard from "@/components/reviews/ReviewCard";
 import ReviewForm from "@/components/reviews/ReviewForm";
-import { getFacultyAvatarUrl, ratingBg } from "@/lib/utils";
+import Avatar from "@/components/ui/Avatar";
+import { ratingBg } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import toast from "react-hot-toast";
@@ -67,7 +68,7 @@ export default function FacultyDetailClient({ faculty, initialReviews, currentUs
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast.success("Link copied to clipboard!");
+    toast.success("Link copied!");
   };
 
   const dept = (faculty as any).departments;
@@ -83,16 +84,24 @@ export default function FacultyDetailClient({ faculty, initialReviews, currentUs
       {/* Faculty Header */}
       <div className="card p-5 sm:p-7 mb-6">
         <div className="flex flex-col sm:flex-row gap-5 sm:gap-7">
-          {/* Avatar */}
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-blush-100 shrink-0 bg-rose-50">
-            <Image
-              src={faculty.avatar_url || getFacultyAvatarUrl(faculty.name)}
-              alt={faculty.name}
-              width={96}
-              height={96}
-              className="object-cover w-full h-full"
+          {/* Avatar — custom image or initials fallback */}
+          {faculty.avatar_url ? (
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-blush-100 shrink-0 bg-rose-50">
+              <Image
+                src={faculty.avatar_url}
+                alt={faculty.name}
+                width={96}
+                height={96}
+                className="object-cover w-full h-full"
+              />
+            </div>
+          ) : (
+            <Avatar
+              username={faculty.name}
+              size="lg"
+              className="rounded-2xl border-2 border-blush-100 shrink-0 w-20 h-20 sm:w-24 sm:h-24 text-3xl"
             />
-          </div>
+          )}
 
           {/* Info */}
           <div className="flex-1">
@@ -116,7 +125,6 @@ export default function FacultyDetailClient({ faculty, initialReviews, currentUs
               </button>
             </div>
 
-            {/* Overall rating */}
             <div className="flex items-center gap-3 mt-4">
               <div className={`px-3 py-1.5 rounded-xl text-lg font-bold ${ratingBg(faculty.overall_rating)}`}>
                 {faculty.overall_rating.toFixed(1)}
@@ -129,7 +137,6 @@ export default function FacultyDetailClient({ faculty, initialReviews, currentUs
               </div>
             </div>
 
-            {/* Subjects */}
             {faculty.subjects && faculty.subjects.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-3">
                 {faculty.subjects.map(s => (
@@ -159,20 +166,16 @@ export default function FacultyDetailClient({ faculty, initialReviews, currentUs
       {/* Tab Content */}
       {tab === "about" ? (
         <div className="space-y-4">
-          {/* Rating breakdown */}
           <div className="card p-5">
             <h3 className="font-semibold text-gray-700 mb-4">Rating Breakdown</h3>
             <div className="space-y-3">
               {RATING_CATEGORIES.map(cat => {
                 const avgKey = `avg_${cat.key}` as keyof Faculty;
                 const value = (faculty[avgKey] as number) || 0;
-                return (
-                  <RatingBar key={cat.key} label={cat.label} emoji={cat.emoji} value={value} />
-                );
+                return <RatingBar key={cat.key} label={cat.label} emoji={cat.emoji} value={value} />;
               })}
             </div>
           </div>
-
           {faculty.bio && (
             <div className="card p-5">
               <h3 className="font-semibold text-gray-700 mb-2">About</h3>
@@ -182,25 +185,21 @@ export default function FacultyDetailClient({ faculty, initialReviews, currentUs
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Write Review Button */}
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-500">{reviews.length} review{reviews.length !== 1 ? "s" : ""}</p>
             {user ? (
               !userReview ? (
                 <button onClick={() => { setEditingReview(null); setShowForm(true); }} className="btn-primary text-sm py-2 flex items-center gap-2">
-                  <PenLine size={14} />
-                  Write Review
+                  <PenLine size={14} /> Write Review
                 </button>
               ) : (
                 <button onClick={() => { setEditingReview(userReview); setShowForm(true); }} className="btn-secondary text-sm py-2 flex items-center gap-2">
-                  <PenLine size={14} />
-                  Edit My Review
+                  <PenLine size={14} /> Edit My Review
                 </button>
               )
             ) : (
               <Link href="/auth/login" className="btn-primary text-sm py-2 flex items-center gap-2">
-                <PenLine size={14} />
-                Write Review
+                <PenLine size={14} /> Write Review
               </Link>
             )}
           </div>
@@ -213,11 +212,11 @@ export default function FacultyDetailClient({ faculty, initialReviews, currentUs
             </div>
           ) : (
             <div className="space-y-4">
-              {reviews.map((review) => (
+              {reviews.map(review => (
                 <ReviewCard
                   key={review.id}
                   review={review}
-                  onEdit={(r) => { setEditingReview(r); setShowForm(true); }}
+                  onEdit={r => { setEditingReview(r); setShowForm(true); }}
                   onDelete={handleDelete}
                 />
               ))}
@@ -226,7 +225,6 @@ export default function FacultyDetailClient({ faculty, initialReviews, currentUs
         </div>
       )}
 
-      {/* Review Form Modal */}
       <AnimatePresence>
         {showForm && (
           <ReviewForm

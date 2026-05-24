@@ -82,7 +82,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-rose-100 pt-4 flex flex-col sm:flex-row justify-between items-center gap-3">
-          <p className="text-xs text-gray-400">© 2024 Faculty Review. All rights reserved.</p>
+          <p className="text-xs text-gray-400">© 2026 Faculty Review. All rights reserved.</p>
           <div className="flex gap-4">
             <Link href="#" className="text-xs text-gray-400 hover:text-blush-500 transition-colors">Terms of Use</Link>
             <Link href="#" className="text-xs text-gray-400 hover:text-blush-500 transition-colors">Privacy Policy</Link>

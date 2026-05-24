@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import GoogleAuthButton from "@/components/auth/GoogleAuthButton";
 import toast from "react-hot-toast";
 
 export default function SignupPage() {
@@ -63,6 +64,16 @@ export default function SignupPage() {
                 <span key={u} className="text-xs bg-white px-2 py-0.5 rounded-lg text-gray-500 border border-rose-100">{u}</span>
               ))}
             </div>
+          </div>
+
+          {/* Google — works for sign up too (creates account on first use) */}
+          <GoogleAuthButton label="Sign up with Google" />
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-rose-100" />
+            <span className="text-xs text-gray-400 font-medium">or sign up with email</span>
+            <div className="flex-1 h-px bg-rose-100" />
           </div>
 
           <form onSubmit={handleSignup} className="space-y-4">

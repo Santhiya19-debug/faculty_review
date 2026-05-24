@@ -16,7 +16,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
-  const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +26,10 @@ export default function LoginPage() {
     }
 
     setLoading(true);
+
+    // FIX: Supabase client is initialized here so it only runs in the browser,
+    // avoiding the Vercel prerendering crash.
+    const supabase = createClient();
 
     const { error } = await supabase.auth.signInWithPassword({
       email,

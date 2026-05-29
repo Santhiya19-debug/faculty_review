@@ -1,11 +1,19 @@
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
+export interface School {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Department {
   id: string;
   name: string;
-  slug: string;
+  slug: string | null;
   icon: string | null;
+  school_id: string | null;
   created_at: string;
+  schools?: School;
 }
 
 export interface Profile {
@@ -17,23 +25,42 @@ export interface Profile {
 
 export interface Faculty {
   id: string;
+  // Existing field name kept for compatibility
   name: string;
   department_id: string | null;
+  school_id: string | null;
   designation: string | null;
   subjects: string[] | null;
   avatar_url: string | null;
   bio: string | null;
+  // Original rating fields (user reviews)
   avg_strictness: number;
   avg_internal_marks: number;
   avg_cat_correction: number;
   avg_teaching_quality: number;
   avg_attendance: number;
   avg_student_friendliness: number;
+  // Imported/auto-generated metric fields
+  strictness: number | null;
+  teaching_quality: number | null;
+  attendance_flexibility: number | null;
+  marks_leniency: number | null;
   overall_rating: number;
   review_count: number;
   is_verified: boolean;
   created_at: string;
+  // Joined relations
   departments?: Department;
+  schools?: School;
+}
+
+export interface ImportedReview {
+  id: string;
+  faculty_id: string;
+  review_text: string;
+  source: string | null;
+  upvotes: number;
+  created_at: string;
 }
 
 export interface Review {

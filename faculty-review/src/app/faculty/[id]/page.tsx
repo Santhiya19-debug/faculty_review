@@ -14,30 +14,38 @@ export default async function FacultyPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const supabase = await createClient();
 
+  // Fetch faculty with departments AND schools
   const { data: faculty } = await supabase
     .from("faculties")
-    .select("*, departments(*)")
+    .select("*, departments(*), schools(*)")
     .eq("id", id)
     .single();
 
   if (!faculty) notFound();
 
+  // Fetch user-submitted reviews
   const { data: reviews } = await supabase
     .from("reviews")
     .select("*, profiles(username)")
     .eq("faculty_id", id)
     .order("helpful_count", { ascending: false });
 
+  // Fetch imported community reviews from faculty_reviews table
+  const { data: importedReviews } = await supabase
+    .from("faculty_reviews")
+    .select("*")
+    .eq("faculty_id", id)
+    .order("created_at", { ascending: false });
+
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Attach vote info if user is logged in
+  // Attach vote info to user reviews
   let reviewsWithVotes = reviews || [];
   if (user && reviews) {
     const { data: votes } = await supabase
       .from("votes")
       .select("review_id, vote_type")
       .eq("user_id", user.id);
-    
     const voteMap = new Map(votes?.map(v => [v.review_id, v.vote_type]) || []);
     reviewsWithVotes = reviews.map(r => ({
       ...r,
@@ -50,6 +58,7 @@ export default async function FacultyPage({ params }: { params: Promise<{ id: st
       <FacultyDetailClient
         faculty={faculty}
         initialReviews={reviewsWithVotes}
+        importedReviews={importedReviews || []}
         currentUserId={user?.id || null}
       />
     </MainLayout>

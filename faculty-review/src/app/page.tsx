@@ -9,29 +9,29 @@ import RequestCTA from "@/components/shared/RequestCTA";
 export default async function HomePage() {
   const supabase = await createClient();
 
-  // Fetch top rated faculties
+  // Top rated faculties — join departments and schools
   const { data: topFaculties } = await supabase
     .from("faculties")
-    .select("*, departments(*)")
+    .select("*, departments(*), schools(*)")
     .order("overall_rating", { ascending: false })
     .limit(8);
 
-  // Fetch recent reviews
+  // Recent user-submitted reviews
   const { data: recentReviews } = await supabase
     .from("reviews")
     .select("*, profiles(username), faculties(name, id)")
     .order("created_at", { ascending: false })
     .limit(4);
 
-  // Fetch departments
-  const { data: departments } = await supabase
-    .from("departments")
+  // Schools for hero section search dropdown
+  const { data: schools } = await supabase
+    .from("schools")
     .select("*")
     .order("name");
 
   return (
     <MainLayout>
-      <HeroSection departments={departments || []} />
+      <HeroSection schools={schools || []} />
       <FeaturesRow />
       <TopFaculties faculties={topFaculties || []} />
       <RecentReviews reviews={recentReviews || []} />

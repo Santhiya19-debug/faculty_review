@@ -1,68 +1,119 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
-import { Department, Faculty } from "@/types";
+import { School, Department, Faculty } from "@/types";
 import FacultyCard from "@/components/faculty/FacultyCard";
 import { FacultyCardSkeleton } from "@/components/ui/Skeleton";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
-interface SearchClientProps {
-  departments: Department[];
-}
+type SortOption = "rating" | "name" | "reviews";
 
-type SortOption = "rating" | "reviews" | "name";
-
-export default function SearchClient({ departments }: SearchClientProps) {
+export default function SearchClient() {
   const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [selectedDept, setSelectedDept] = useState(searchParams.get("dept") || "");
-  const [sort, setSort] = useState<SortOption>("rating");
-  const [faculties, setFaculties] = useState<Faculty[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const supabase = createClient();
 
+  // Search & filter state
+  const [query, setQuery] = useState(searchParams.get("q") || "");
+  const [selectedSchool, setSelectedSchool] = useState<string>("");
+  const [selectedDept, setSelectedDept] = useState<string>("");
+  const [sort, setSort] = useState<SortOption>("rating");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Data state
+  const [schools, setSchools] = useState<School[]>([]);
+  const [allDepts, setAllDepts] = useState<Department[]>([]);
+  const [filteredDepts, setFilteredDepts] = useState<Department[]>([]);
+  const [faculties, setFaculties] = useState<Faculty[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load schools on mount
+  useEffect(() => {
+    supabase.from("schools").select("*").order("name")
+      .then(({ data }) => setSchools(data || []));
+  }, []);
+
+  // Load departments on mount
+  useEffect(() => {
+    supabase.from("departments").select("*").order("name")
+      .then(({ data }) => {
+        setAllDepts(data || []);
+        setFilteredDepts(data || []);
+      });
+  }, []);
+
+  // Filter departments when school changes
+  useEffect(() => {
+    if (selectedSchool) {
+      const filtered = allDepts.filter(d => d.school_id === selectedSchool);
+      setFilteredDepts(filtered);
+      setSelectedDept(""); // reset dept when school changes
+    } else {
+      setFilteredDepts(allDepts);
+    }
+  }, [selectedSchool, allDepts]);
+
+  // Fetch faculties
   const fetchFaculties = useCallback(async () => {
     setLoading(true);
+
     let q = supabase
       .from("faculties")
-      .select("*, departments(*)")
+      .select("*, departments(*), schools(*)")
       .order(
-        sort === "rating" ? "overall_rating" : sort === "reviews" ? "review_count" : "name",
+        sort === "rating" ? "overall_rating" :
+        sort === "reviews" ? "review_count" : "name",
         { ascending: sort === "name" }
       );
 
+    // Text search by name
     if (query.trim()) {
       q = q.ilike("name", `%${query.trim()}%`);
     }
 
-    if (selectedDept) {
-      const dept = departments.find(d => d.slug === selectedDept);
-      if (dept) q = q.eq("department_id", dept.id);
+    // School filter
+    if (selectedSchool) {
+      q = q.eq("school_id", selectedSchool);
     }
 
-    const { data } = await q.limit(50);
+    // Department filter
+    if (selectedDept) {
+      q = q.eq("department_id", selectedDept);
+    }
+
+    const { data } = await q.limit(100);
     setFaculties(data || []);
     setLoading(false);
-  }, [query, selectedDept, sort]);
+  }, [query, selectedSchool, selectedDept, sort]);
 
+  // Debounced fetch
   useEffect(() => {
     const timer = setTimeout(fetchFaculties, 300);
     return () => clearTimeout(timer);
   }, [fetchFaculties]);
+
+  const clearFilters = () => {
+    setSelectedSchool("");
+    setSelectedDept("");
+    setSort("rating");
+  };
+
+  const hasFilters = selectedSchool || selectedDept || sort !== "rating";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
       <div className="mb-6">
         <h1 className="section-title mb-1">Browse Faculties</h1>
-        <p className="text-sm text-gray-500">Find and review faculties across all departments</p>
+        <p className="text-sm text-gray-500">
+          Search by name, or filter by school and department
+        </p>
       </div>
 
-      {/* Search + Filters */}
+      {/* Search bar + filter toggle */}
       <div className="flex gap-3 mb-4 flex-col sm:flex-row">
         <div className="flex-1 relative">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-blush-400" />
@@ -74,7 +125,10 @@ export default function SearchClient({ departments }: SearchClientProps) {
             className="input-field pl-10"
           />
           {query && (
-            <button onClick={() => setQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+            <button
+              onClick={() => setQuery("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+            >
               <X size={14} />
             </button>
           )}
@@ -86,95 +140,133 @@ export default function SearchClient({ departments }: SearchClientProps) {
         >
           <SlidersHorizontal size={15} />
           Filters
-          {(selectedDept || sort !== "rating") && (
-            <span className="w-2 h-2 bg-blush-500 rounded-full" />
-          )}
+          {hasFilters && <span className="w-2 h-2 bg-blush-500 rounded-full" />}
         </button>
       </div>
 
-      {/* Filter Panel */}
-      {filtersOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          className="card p-4 mb-5 overflow-hidden"
-        >
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">Department</label>
-              <div className="relative">
-                <select
-                  value={selectedDept}
-                  onChange={e => setSelectedDept(e.target.value)}
-                  className="input-field appearance-none pr-8"
-                >
-                  <option value="">All Departments</option>
-                  {departments.map(d => (
-                    <option key={d.id} value={d.slug}>{d.icon} {d.name}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-blush-400 pointer-events-none" />
-              </div>
-            </div>
+      {/* Filter panel */}
+      <AnimatePresence>
+        {filtersOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="card p-5 mb-5 overflow-hidden"
+          >
+            <div className="grid sm:grid-cols-3 gap-4">
 
-            <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">Sort By</label>
-              <div className="flex gap-2">
-                {(["rating", "reviews", "name"] as SortOption[]).map(s => (
-                  <button
-                    key={s}
-                    onClick={() => setSort(s)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all capitalize ${
-                      sort === s ? "bg-blush-500 text-white border-blush-500" : "border-rose-200 text-gray-500 hover:border-blush-300"
-                    }`}
+              {/* Option 1: School → Department → Faculty */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
+                  School
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedSchool}
+                    onChange={e => setSelectedSchool(e.target.value)}
+                    className="input-field appearance-none pr-8 text-sm"
                   >
-                    {s === "rating" ? "⭐ Rating" : s === "reviews" ? "💬 Reviews" : "🔤 Name"}
-                  </button>
-                ))}
+                    <option value="">All Schools</option>
+                    {schools.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-blush-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Option 2: Department */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
+                  Department
+                  {selectedSchool && filteredDepts.length > 0 && (
+                    <span className="ml-1.5 text-blush-400 normal-case font-normal">
+                      ({filteredDepts.length})
+                    </span>
+                  )}
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedDept}
+                    onChange={e => setSelectedDept(e.target.value)}
+                    className="input-field appearance-none pr-8 text-sm"
+                    disabled={filteredDepts.length === 0}
+                  >
+                    <option value="">
+                      {filteredDepts.length === 0 ? "No departments" : "All Departments"}
+                    </option>
+                    {filteredDepts.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-blush-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Sort */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
+                  Sort By
+                </label>
+                <div className="flex gap-2">
+                  {(["rating", "name", "reviews"] as SortOption[]).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setSort(s)}
+                      className={cn(
+                        "flex-1 py-2 rounded-xl text-xs font-semibold border transition-all",
+                        sort === s
+                          ? "bg-blush-500 text-white border-blush-500"
+                          : "border-rose-200 text-gray-500 hover:border-blush-300"
+                      )}
+                    >
+                      {s === "rating" ? "⭐ Rating" : s === "reviews" ? "💬 Reviews" : "🔤 Name"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {(selectedDept || sort !== "rating") && (
-            <button
-              onClick={() => { setSelectedDept(""); setSort("rating"); }}
-              className="mt-3 text-xs text-blush-500 hover:underline"
-            >
-              Clear filters
-            </button>
+            {hasFilters && (
+              <button
+                onClick={clearFilters}
+                className="mt-4 text-xs text-blush-500 hover:underline"
+              >
+                Clear all filters
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Active filter pills */}
+      {hasFilters && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {selectedSchool && (
+            <span className="badge bg-blush-50 text-blush-600 border border-blush-100 gap-1.5">
+              🏫 {schools.find(s => s.id === selectedSchool)?.name?.split('(')[1]?.replace(')', '') || "School"}
+              <button onClick={() => setSelectedSchool("")} className="hover:text-blush-800">
+                <X size={11} />
+              </button>
+            </span>
           )}
-        </motion.div>
+          {selectedDept && (
+            <span className="badge bg-blush-50 text-blush-600 border border-blush-100 gap-1.5">
+              📚 {allDepts.find(d => d.id === selectedDept)?.name}
+              <button onClick={() => setSelectedDept("")} className="hover:text-blush-800">
+                <X size={11} />
+              </button>
+            </span>
+          )}
+        </div>
       )}
 
-      {/* Department Pills */}
-      <div className="flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-none">
-        <button
-          onClick={() => setSelectedDept("")}
-          className={`shrink-0 badge py-1.5 px-3 border transition-all ${
-            !selectedDept ? "bg-blush-500 text-white border-blush-500" : "bg-white text-gray-600 border-rose-200 hover:border-blush-300"
-          }`}
-        >
-          All
-        </button>
-        {departments.map(d => (
-          <button
-            key={d.id}
-            onClick={() => setSelectedDept(d.slug === selectedDept ? "" : d.slug)}
-            className={`shrink-0 badge py-1.5 px-3 border transition-all ${
-              selectedDept === d.slug ? "bg-blush-500 text-white border-blush-500" : "bg-white text-gray-600 border-rose-200 hover:border-blush-300"
-            }`}
-          >
-            {d.icon} {d.name.split(" ")[0]}
-          </button>
-        ))}
-      </div>
-
-      {/* Results */}
+      {/* Results count */}
       <div className="mb-3 text-sm text-gray-400 font-medium">
         {!loading && `${faculties.length} ${faculties.length === 1 ? "faculty" : "faculties"} found`}
       </div>
 
+      {/* Grid */}
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {Array.from({ length: 8 }).map((_, i) => <FacultyCardSkeleton key={i} />)}
@@ -183,7 +275,9 @@ export default function SearchClient({ departments }: SearchClientProps) {
         <div className="text-center py-20">
           <p className="text-5xl mb-4">🔍</p>
           <p className="font-semibold text-gray-700 mb-1">No faculties found</p>
-          <p className="text-sm text-gray-400">Try a different search or request a faculty</p>
+          <p className="text-sm text-gray-400">
+            {query ? `No results for "${query}"` : "Try a different filter or search by name"}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">

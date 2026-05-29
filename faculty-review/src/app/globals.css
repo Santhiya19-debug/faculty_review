@@ -3,21 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --blush-50: #fff5f7;
-  --blush-100: #ffe4ea;
-  --blush-200: #ffc9d5;
-  --blush-400: #ff6b8a;
-  --blush-500: #ff3d6b;
-  --blush-600: #e8174a;
+  --blush-50: #fcf8f9;
+  --blush-100: #f8eef1;
+  --blush-200: #eedde3;
+  --blush-400: #c78ea1;
+  --blush-500: #b76f88;
+  --blush-600: #a45d76;
 }
 
 @layer base {
   html {
     scroll-behavior: smooth;
   }
-  
+
   body {
-    background-color: #fdf8f8;
+    background-color: #faf8f9;
     color: #1a1a2e;
   }
 
@@ -60,38 +60,58 @@
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
-  background: #fdf8f8;
+  background: #faf8f9;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #ffc9d5;
+  background: #dfbcc8;
   border-radius: 10px;
 }
 
 /* Star ratings */
 .star-fill {
-  color: #ff6b8a;
+  color: #c78ea1;
 }
+
 .star-empty {
-  color: #ffc9d5;
+  color: #eedde3;
 }
 
 /* Floating animation */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  0%, 100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
 
 /* Shimmer loading */
 @keyframes shimmer {
-  0% { background-position: -200px 0; }
-  100% { background-position: calc(200px + 100%) 0; }
+  0% {
+    background-position: -200px 0;
+  }
+
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
 }
+
 .shimmer {
-  background: linear-gradient(90deg, #fdf0f3 25%, #ffe4ea 50%, #fdf0f3 75%);
+  background: linear-gradient(
+    90deg,
+    #faf4f6 25%,
+    #f3e7eb 50%,
+    #faf4f6 75%
+  );
   background-size: 200px 100%;
   animation: shimmer 1.5s infinite;
 }

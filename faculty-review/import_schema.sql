@@ -1,6 +1,6 @@
 -- ==============================================
 -- FACULTY REVIEWS DATABASE SCHEMA
--- Run this FIRST in Supabase SQL Editor
+-- 
 -- ==============================================
 
 -- Enable UUID extension

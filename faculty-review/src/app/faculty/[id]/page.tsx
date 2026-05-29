@@ -31,11 +31,17 @@ export default async function FacultyPage({ params }: { params: Promise<{ id: st
     .order("helpful_count", { ascending: false });
 
   // Fetch imported community reviews from faculty_reviews table
-  const { data: importedReviews } = await supabase
+  const { data: importedReviews, error: importedError } = await supabase
     .from("faculty_reviews")
     .select("*")
     .eq("faculty_id", id)
     .order("created_at", { ascending: false });
+
+  console.log("=== FACULTY REVIEWS DEBUG ===");
+  console.log("Faculty ID being queried:", id);
+  console.log("importedReviews:", importedReviews);
+  console.log("importedError:", importedError);
+  console.log("=============================");
 
   const { data: { user } } = await supabase.auth.getUser();
 

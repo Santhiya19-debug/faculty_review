@@ -178,15 +178,96 @@ CREATE TABLE reports (
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
-  adjectives TEXT[] := ARRAY['sleepy', 'chaos', 'angry', 'confused', 'tired', 'blessed', 'cursed', 'silent', 'loud', 'soft'];
-  nouns TEXT[] := ARRAY['penguin', 'coder', 'student', 'nerd', 'ghost', 'wizard', 'panda', 'cat', 'fox', 'duck'];
+  prefixes TEXT[] := ARRAY[
+    'cooked','halfAwake','backBencher','chronically',
+    'academically','technically','theoretically',
+    'statistically','suspiciously','mysteriously',
+    'hopelessly','barely','accidentally','lowkey',
+    'highkey','allegedly','officially','unofficially',
+    'reluctantly','aggressively','desperately',
+    'ironically','delulu','unhinged','terminally',
+    'deadass','professionally','mildly','extremely',
+    'objectively','realistically','emotionally',
+    'mentally','existentially','concerningly',
+    'disturbingly','chaotically','dramatically',
+    'catastrophically','segfault','nullPointer',
+    'stackOver','infiniteLoop','deadlock',
+    'memLeak','syntaxError','runtimePanic',
+    'kernelPanic','buildFailed','gitConflict',
+    'regexBroke','dockerDown','apiTimeout',
+    'overflowed','asyncHell','future','aspiring',
+    'certified','selfProclaimed',
+    'technicallyCapable',
+    'theoreticallyHireable',
+    'legallyGraduating',
+    'barelyFunctional',
+    'academicallyPresent',
+    'internalMarks',
+    'attendance',
+    'proxy',
+    'CAT',
+    'review',
+    'CGPA',
+    'deadline',
+    'assignment',
+    'project',
+    'viva',
+    'lab',
+    'exam',
+    'backlog',
+    'hidden',
+    'silent',
+    'ghost',
+    'shadow',
+    'unknown',
+    'anonymous',
+    'invisible',
+    'absent',
+    'deleted',
+    'secret',
+    'incognito',
+    'masked'
+  ];
+
+  suffixes TEXT[] := ARRAY[
+    'Survivor','Scholar','Trying','Sleeping',
+    'Studying','Functioning','Coping','Grinding',
+    'Existing','Vibing','Dissociating',
+    'Manifesting','Imploding','Spiraling',
+    'Debugging','Overthinking','Procrastinating',
+    'Brainrotted','NPC','Cooked','Soul',
+    'Enjoyer','Debugger','Compiler','Deployer',
+    'Committer','Reviewer','Architect',
+    'Engineer','Developer','Coder',
+    'Optimizer','Tester','Maintainer',
+    'Unemployed','Dropout','Intern',
+    'Overachiever','Candidate','Innovator',
+    'Hunter','Negotiator','Investor',
+    'Archaeologist','Calculator',
+    'Manipulator','Tracker','Auditor',
+    'Reporter','Detective','Investigator',
+    'Observer','Witness','Victim',
+    'Insider','Commenter','Lurker',
+    'Reader','Follower','Member',
+    'User','Profile','Entity',
+    'Node','Agent','Operator',
+    'Moderator','Participant',
+    'Guest','Visitor','Browser',
+    'Client'
+  ];
+
   random_username TEXT;
 BEGIN
-  random_username := adjectives[floor(random() * array_length(adjectives, 1) + 1)] || '_' ||
-                     nouns[floor(random() * array_length(nouns, 1) + 1)] || '_' ||
-                     floor(random() * 9000 + 1000)::TEXT;
+  random_username :=
+    prefixes[floor(random() * array_length(prefixes, 1) + 1)]
+    || '_'
+    || suffixes[floor(random() * array_length(suffixes, 1) + 1)]
+    || '_'
+    || floor(random() * 9000 + 1000)::TEXT;
+
   INSERT INTO profiles (id, username)
   VALUES (NEW.id, random_username);
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

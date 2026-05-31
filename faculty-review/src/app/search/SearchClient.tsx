@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { Search, SlidersHorizontal, X, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { School, Department, Faculty } from "@/types";
 import FacultyCard from "@/components/faculty/FacultyCard";
 import { FacultyCardSkeleton } from "@/components/ui/Skeleton";
@@ -11,6 +11,9 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type SortOption = "rating" | "name" | "reviews";
+
+// How many faculties to show per page
+const PAGE_SIZE = 24;
 
 export default function SearchClient() {
   const searchParams = useSearchParams();
@@ -23,22 +26,26 @@ export default function SearchClient() {
   const [sort, setSort] = useState<SortOption>("rating");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Data state
+  // Pagination
+  const [page, setPage] = useState(0); // 0-indexed
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Data
   const [schools, setSchools] = useState<School[]>([]);
   const [allDepts, setAllDepts] = useState<Department[]>([]);
   const [filteredDepts, setFilteredDepts] = useState<Department[]>([]);
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load schools on mount
+  // Load schools once
   useEffect(() => {
-    supabase.from("schools").select("*").order("name")
+    supabase.from("schools").select("id, name").order("name")
       .then(({ data }) => setSchools(data || []));
   }, []);
 
-  // Load departments on mount
+  // Load departments once
   useEffect(() => {
-    supabase.from("departments").select("*").order("name")
+    supabase.from("departments").select("id, name, school_id, icon, slug").order("name")
       .then(({ data }) => {
         setAllDepts(data || []);
         setFilteredDepts(data || []);
@@ -48,46 +55,62 @@ export default function SearchClient() {
   // Filter departments when school changes
   useEffect(() => {
     if (selectedSchool) {
-      const filtered = allDepts.filter(d => d.school_id === selectedSchool);
-      setFilteredDepts(filtered);
-      setSelectedDept(""); // reset dept when school changes
+      setFilteredDepts(allDepts.filter(d => d.school_id === selectedSchool));
+      setSelectedDept("");
     } else {
       setFilteredDepts(allDepts);
     }
+    setPage(0);
   }, [selectedSchool, allDepts]);
 
-  // Fetch faculties
+  // Reset page when filters/sort/query change
+  useEffect(() => {
+    setPage(0);
+  }, [query, selectedDept, sort]);
+
+  // Fetch faculties — only the fields FacultyCard needs (Opt 2+5)
   const fetchFaculties = useCallback(async () => {
     setLoading(true);
 
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
     let q = supabase
       .from("faculties")
-      .select("*, departments(*), schools(*)")
+      .select(
+        `id,
+         name,
+         designation,
+         avatar_url,
+         overall_rating,
+         review_count,
+         teaching_quality,
+         strictness,
+         attendance_flexibility,
+         marks_leniency,
+         is_verified,
+         school_id,
+         department_id,
+         departments ( id, name, icon, slug ),
+         schools ( id, name )`,
+        { count: "exact" }
+      )
       .order(
         sort === "rating" ? "overall_rating" :
         sort === "reviews" ? "review_count" : "name",
         { ascending: sort === "name" }
-      );
+      )
+      .range(from, to);
 
-    // Text search by name
-    if (query.trim()) {
-      q = q.ilike("name", `%${query.trim()}%`);
-    }
+    if (query.trim()) q = q.ilike("name", `%${query.trim()}%`);
+    if (selectedSchool) q = q.eq("school_id", selectedSchool);
+    if (selectedDept) q = q.eq("department_id", selectedDept);
 
-    // School filter
-    if (selectedSchool) {
-      q = q.eq("school_id", selectedSchool);
-    }
-
-    // Department filter
-    if (selectedDept) {
-      q = q.eq("department_id", selectedDept);
-    }
-
-    const { data } = await q.limit(100);
-    setFaculties(data || []);
+    const { data: raw, count } = await q;
+    setFaculties((raw || []) as unknown as Faculty[]);
+    setTotalCount(count ?? 0);
     setLoading(false);
-  }, [query, selectedSchool, selectedDept, sort]);
+  }, [query, selectedSchool, selectedDept, sort, page]);
 
   // Debounced fetch
   useEffect(() => {
@@ -95,25 +118,25 @@ export default function SearchClient() {
     return () => clearTimeout(timer);
   }, [fetchFaculties]);
 
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const hasFilters = !!(selectedSchool || selectedDept || sort !== "rating");
+
   const clearFilters = () => {
     setSelectedSchool("");
     setSelectedDept("");
     setSort("rating");
+    setPage(0);
   };
-
-  const hasFilters = selectedSchool || selectedDept || sort !== "rating";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* Header */}
       <div className="mb-6">
         <h1 className="section-title mb-1">Browse Faculties</h1>
-        <p className="text-sm text-gray-500">
-          Search by name, or filter by school and department
-        </p>
+        <p className="text-sm text-gray-500">Search by name, or filter by school and department</p>
       </div>
 
-      {/* Search bar + filter toggle */}
+      {/* Search + filter toggle */}
       <div className="flex gap-3 mb-4 flex-col sm:flex-row">
         <div className="flex-1 relative">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-blush-400" />
@@ -125,10 +148,7 @@ export default function SearchClient() {
             className="input-field pl-10"
           />
           {query && (
-            <button
-              onClick={() => setQuery("")}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
-            >
+            <button onClick={() => setQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
               <X size={14} />
             </button>
           )}
@@ -154,12 +174,9 @@ export default function SearchClient() {
             className="card p-5 mb-5 overflow-hidden"
           >
             <div className="grid sm:grid-cols-3 gap-4">
-
-              {/* Option 1: School → Department → Faculty */}
+              {/* School */}
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-                  School
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">School</label>
                 <div className="relative">
                   <select
                     value={selectedSchool}
@@ -175,26 +192,22 @@ export default function SearchClient() {
                 </div>
               </div>
 
-              {/* Option 2: Department */}
+              {/* Department */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
                   Department
                   {selectedSchool && filteredDepts.length > 0 && (
-                    <span className="ml-1.5 text-blush-400 normal-case font-normal">
-                      ({filteredDepts.length})
-                    </span>
+                    <span className="ml-1.5 text-blush-400 normal-case font-normal">({filteredDepts.length})</span>
                   )}
                 </label>
                 <div className="relative">
                   <select
                     value={selectedDept}
                     onChange={e => setSelectedDept(e.target.value)}
-                    className="input-field appearance-none pr-8 text-sm"
                     disabled={filteredDepts.length === 0}
+                    className="input-field appearance-none pr-8 text-sm"
                   >
-                    <option value="">
-                      {filteredDepts.length === 0 ? "No departments" : "All Departments"}
-                    </option>
+                    <option value="">{filteredDepts.length === 0 ? "No departments" : "All Departments"}</option>
                     {filteredDepts.map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
@@ -205,9 +218,7 @@ export default function SearchClient() {
 
               {/* Sort */}
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-                  Sort By
-                </label>
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Sort By</label>
                 <div className="flex gap-2">
                   {(["rating", "name", "reviews"] as SortOption[]).map(s => (
                     <button
@@ -215,9 +226,7 @@ export default function SearchClient() {
                       onClick={() => setSort(s)}
                       className={cn(
                         "flex-1 py-2 rounded-xl text-xs font-semibold border transition-all",
-                        sort === s
-                          ? "bg-blush-500 text-white border-blush-500"
-                          : "border-rose-200 text-gray-500 hover:border-blush-300"
+                        sort === s ? "bg-blush-500 text-white border-blush-500" : "border-rose-200 text-gray-500 hover:border-blush-300"
                       )}
                     >
                       {s === "rating" ? "⭐ Rating" : s === "reviews" ? "💬 Reviews" : "🔤 Name"}
@@ -228,10 +237,7 @@ export default function SearchClient() {
             </div>
 
             {hasFilters && (
-              <button
-                onClick={clearFilters}
-                className="mt-4 text-xs text-blush-500 hover:underline"
-              >
+              <button onClick={clearFilters} className="mt-4 text-xs text-blush-500 hover:underline">
                 Clear all filters
               </button>
             )}
@@ -244,32 +250,34 @@ export default function SearchClient() {
         <div className="flex flex-wrap gap-2 mb-4">
           {selectedSchool && (
             <span className="badge bg-blush-50 text-blush-600 border border-blush-100 gap-1.5">
-              🏫 {schools.find(s => s.id === selectedSchool)?.name?.split('(')[1]?.replace(')', '') || "School"}
-              <button onClick={() => setSelectedSchool("")} className="hover:text-blush-800">
-                <X size={11} />
-              </button>
+              🏫 {schools.find(s => s.id === selectedSchool)?.name?.match(/\(([^)]+)\)/)?.[1] || "School"}
+              <button onClick={() => setSelectedSchool("")} className="hover:text-blush-800"><X size={11} /></button>
             </span>
           )}
           {selectedDept && (
             <span className="badge bg-blush-50 text-blush-600 border border-blush-100 gap-1.5">
               📚 {allDepts.find(d => d.id === selectedDept)?.name}
-              <button onClick={() => setSelectedDept("")} className="hover:text-blush-800">
-                <X size={11} />
-              </button>
+              <button onClick={() => setSelectedDept("")} className="hover:text-blush-800"><X size={11} /></button>
             </span>
           )}
         </div>
       )}
 
       {/* Results count */}
-      <div className="mb-3 text-sm text-gray-400 font-medium">
-        {!loading && `${faculties.length} ${faculties.length === 1 ? "faculty" : "faculties"} found`}
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm text-gray-400 font-medium">
+          {!loading && (
+            totalCount > 0
+              ? `Showing ${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)} of ${totalCount} faculties`
+              : "No faculties found"
+          )}
+        </p>
       </div>
 
       {/* Grid */}
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          {Array.from({ length: 8 }).map((_, i) => <FacultyCardSkeleton key={i} />)}
+          {Array.from({ length: PAGE_SIZE }).map((_, i) => <FacultyCardSkeleton key={i} />)}
         </div>
       ) : faculties.length === 0 ? (
         <div className="text-center py-20">
@@ -284,6 +292,57 @@ export default function SearchClient() {
           {faculties.map((faculty, i) => (
             <FacultyCard key={faculty.id} faculty={faculty} index={i} />
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-8">
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="p-2 rounded-xl border border-rose-200 text-gray-500 hover:border-blush-300 hover:text-blush-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
+              // Show pages around current page
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i;
+              } else if (page < 3) {
+                pageNum = i;
+              } else if (page > totalPages - 4) {
+                pageNum = totalPages - 5 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setPage(pageNum)}
+                  className={cn(
+                    "w-9 h-9 rounded-xl text-sm font-semibold transition-all",
+                    pageNum === page
+                      ? "bg-blush-500 text-white shadow-pink"
+                      : "border border-rose-200 text-gray-500 hover:border-blush-300 hover:text-blush-500"
+                  )}
+                >
+                  {pageNum + 1}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            className="p-2 rounded-xl border border-rose-200 text-gray-500 hover:border-blush-300 hover:text-blush-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
       )}
     </div>

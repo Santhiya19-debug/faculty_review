@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, SlidersHorizontal, X, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { School, Department, Faculty } from "@/types";
@@ -16,11 +15,10 @@ type SortOption = "rating" | "name" | "reviews";
 const PAGE_SIZE = 24;
 
 export default function SearchClient() {
-  const searchParams = useSearchParams();
   const supabase = createClient();
 
   // Search & filter state
-  const [query, setQuery] = useState(searchParams.get("q") || "");
+  const [query, setQuery] = useState("");
   const [selectedSchool, setSelectedSchool] = useState<string>("");
   const [selectedDept, setSelectedDept] = useState<string>("");
   const [sort, setSort] = useState<SortOption>("rating");

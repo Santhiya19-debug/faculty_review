@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import SearchClient from "./SearchClient";
 
@@ -8,7 +9,9 @@ export const metadata = {
 export default function SearchPage() {
   return (
     <MainLayout>
-      <SearchClient />
+      <Suspense fallback={<div />}>
+        <SearchClient />
+      </Suspense>
     </MainLayout>
   );
 }

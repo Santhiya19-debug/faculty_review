@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, SlidersHorizontal, X, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { School, Department, Faculty } from "@/types";
@@ -16,16 +18,21 @@ const PAGE_SIZE = 24;
 
 export default function SearchClient() {
   const supabase = createClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Search & filter state
-  const [query, setQuery] = useState("");
-  const [selectedSchool, setSelectedSchool] = useState<string>("");
-  const [selectedDept, setSelectedDept] = useState<string>("");
-  const [sort, setSort] = useState<SortOption>("rating");
+  // Search & filter state (initialized from URL parameters)
+  const [query, setQuery] = useState(() => searchParams.get("q") || "");
+  const [selectedSchool, setSelectedSchool] = useState(() => searchParams.get("school") || "");
+  const [selectedDept, setSelectedDept] = useState(() => searchParams.get("dept") || "");
+  const [sort, setSort] = useState<SortOption>(() => (searchParams.get("sort") as SortOption) || "rating");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Pagination
-  const [page, setPage] = useState(0); // 0-indexed
+  // Pagination (initialized from URL parameters; 1-indexed in URL, 0-indexed in code)
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get("page");
+    return p ? Math.max(0, parseInt(p, 10) - 1) : 0;
+  });
   const [totalCount, setTotalCount] = useState(0);
 
   // Data
@@ -34,6 +41,50 @@ export default function SearchClient() {
   const [filteredDepts, setFilteredDepts] = useState<Department[]>([]);
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Ref tracking last synchronized query string to prevent loops and lock navigation source
+  const lastSyncedParams = useRef(searchParams.toString());
+
+  // 1. Sync state FROM URL (handles browser Back/Forward navigation)
+  useEffect(() => {
+    const currentParamsStr = searchParams.toString();
+    if (currentParamsStr !== lastSyncedParams.current) {
+      const q = searchParams.get("q") || "";
+      const school = searchParams.get("school") || "";
+      const dept = searchParams.get("dept") || "";
+      const sortParam = (searchParams.get("sort") as SortOption) || "rating";
+      const pageParam = searchParams.get("page");
+      const parsedPage = pageParam ? Math.max(0, parseInt(pageParam, 10) - 1) : 0;
+
+      setQuery(q);
+      setSelectedSchool(school);
+      setSelectedDept(dept);
+      if (["rating", "name", "reviews"].includes(sortParam)) {
+        setSort(sortParam);
+      }
+      setPage(parsedPage);
+
+      lastSyncedParams.current = currentParamsStr;
+    }
+  }, [searchParams]);
+
+  // 2. Sync state TO URL (handles user-driven filter interactions)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (selectedSchool) params.set("school", selectedSchool);
+    if (selectedDept) params.set("dept", selectedDept);
+    if (sort !== "rating") params.set("sort", sort);
+    if (page > 0) params.set("page", (page + 1).toString());
+
+    const newParamsStr = params.toString();
+
+    // Only update if local state differs from synced state AND the browser URL matches synced state
+    if (newParamsStr !== lastSyncedParams.current && searchParams.toString() === lastSyncedParams.current) {
+      lastSyncedParams.current = newParamsStr;
+      router.replace(`?${newParamsStr}`, { scroll: false });
+    }
+  }, [query, selectedSchool, selectedDept, sort, page, router, searchParams]);
 
   // Load schools once
   useEffect(() => {
@@ -54,17 +105,30 @@ export default function SearchClient() {
   useEffect(() => {
     if (selectedSchool) {
       setFilteredDepts(allDepts.filter(d => d.school_id === selectedSchool));
-      setSelectedDept("");
+      // Guard against clearing state if the change came directly from browser navigation
+      if (selectedSchool !== searchParams.get("school")) {
+        setSelectedDept("");
+        setPage(0);
+      }
     } else {
       setFilteredDepts(allDepts);
+      if (searchParams.get("school")) {
+        setSelectedDept("");
+        setPage(0);
+      }
     }
-    setPage(0);
-  }, [selectedSchool, allDepts]);
+  }, [selectedSchool, allDepts, searchParams]);
 
-  // Reset page when filters/sort/query change
+  // Reset page when filters/sort/query change (only if changed via user-interaction)
   useEffect(() => {
-    setPage(0);
-  }, [query, selectedDept, sort]);
+    const urlQ = searchParams.get("q") || "";
+    const urlDept = searchParams.get("dept") || "";
+    const urlSort = searchParams.get("sort") || "rating";
+
+    if (query !== urlQ || selectedDept !== urlDept || sort !== urlSort) {
+      setPage(0);
+    }
+  }, [query, selectedDept, sort, searchParams]);
 
   // Fetch faculties — only the fields FacultyCard needs (Opt 2+5)
   const fetchFaculties = useCallback(async () => {
@@ -101,7 +165,7 @@ export default function SearchClient() {
       .range(from, to);
 
     if (query.trim()) q = q.or(
-  `name.ilike.${query.trim()}%,name.ilike.% ${query.trim()}%`);
+      `name.ilike.${query.trim()}%,name.ilike.% ${query.trim()}%`);
     if (selectedSchool) q = q.eq("school_id", selectedSchool);
     if (selectedDept) q = q.eq("department_id", selectedDept);
 
@@ -219,7 +283,7 @@ export default function SearchClient() {
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Sort By</label>
                 <div className="flex gap-2">
-                  {(["rating", "name", "reviews"] as SortOption[]).map(s => (
+                  {([ "rating", "name", "reviews" ] as SortOption[]).map(s => (
                     <button
                       key={s}
                       onClick={() => setSort(s)}
@@ -279,27 +343,17 @@ export default function SearchClient() {
           {Array.from({ length: PAGE_SIZE }).map((_, i) => <FacultyCardSkeleton key={i} />)}
         </div>
        ) : faculties.length === 0 ? (
-  <div className="text-center py-20">
-    <p className="text-5xl mb-4">🔍</p>
-
-    <h3 className="text-xl font-semibold text-gray-800 mb-2">
-      Faculty not found
-    </h3>
-
-    <p className="text-sm text-gray-500 mb-6">
-      {query
-        ? `No faculty found for "${query}".`
-        : "Try a different search."}
-    </p>
-
-    <a
-      href="/requests"
-      className="btn-primary inline-flex items-center"
-    >
-      Request Faculty
-    </a>
-  </div>
-): (
+        <div className="text-center py-20">
+          <p className="text-5xl mb-4">🔍</p>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Faculty not found</h3>
+          <p className="text-sm text-gray-500 mb-6">
+            {query ? `No faculty found for "${query}".` : "Try a different search."}
+          </p>
+          <Link href="/requests" className="btn-primary inline-flex items-center">
+            Request Faculty
+          </Link>
+        </div>
+      ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {faculties.map((faculty, i) => (
             <FacultyCard key={faculty.id} faculty={faculty} index={i} />

@@ -100,7 +100,8 @@ export default function SearchClient() {
       )
       .range(from, to);
 
-    if (query.trim()) q = q.ilike("name", `%${query.trim()}%`);
+    if (query.trim()) q = q.or(
+  `name.ilike.${query.trim()}%,name.ilike.% ${query.trim()}%`);
     if (selectedSchool) q = q.eq("school_id", selectedSchool);
     if (selectedDept) q = q.eq("department_id", selectedDept);
 
@@ -277,15 +278,28 @@ export default function SearchClient() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {Array.from({ length: PAGE_SIZE }).map((_, i) => <FacultyCardSkeleton key={i} />)}
         </div>
-      ) : faculties.length === 0 ? (
-        <div className="text-center py-20">
-          <p className="text-5xl mb-4">🔍</p>
-          <p className="font-semibold text-gray-700 mb-1">No faculties found</p>
-          <p className="text-sm text-gray-400">
-            {query ? `No results for "${query}"` : "Try a different filter or search by name"}
-          </p>
-        </div>
-      ) : (
+       ) : faculties.length === 0 ? (
+  <div className="text-center py-20">
+    <p className="text-5xl mb-4">🔍</p>
+
+    <h3 className="text-xl font-semibold text-gray-800 mb-2">
+      Faculty not found
+    </h3>
+
+    <p className="text-sm text-gray-500 mb-6">
+      {query
+        ? `No faculty found for "${query}".`
+        : "Try a different search."}
+    </p>
+
+    <a
+      href="/requests"
+      className="btn-primary inline-flex items-center"
+    >
+      Request Faculty
+    </a>
+  </div>
+): (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {faculties.map((faculty, i) => (
             <FacultyCard key={faculty.id} faculty={faculty} index={i} />

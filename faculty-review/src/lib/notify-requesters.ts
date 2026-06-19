@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { resend, FROM_EMAIL } from "@/lib/resend";
+console.log("notifyAndFulfillRequests called");
+console.log("faculty:", facultyName, facultyId);
 
 const adminClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,6 +13,8 @@ export async function notifyAndFulfillRequests(
   facultyName: string,
   facultyId: string
 ): Promise<void> {
+  console.log("notifyAndFulfillRequests called");
+  console.log("faculty:", facultyName, facultyId);
   const trimmedName = facultyName.trim();
 
   const { data: matchingRequests, error } = await adminClient
@@ -26,6 +30,7 @@ export async function notifyAndFulfillRequests(
   const userIdSet = new Set(
     matchingRequests.map((r) => r.user_id)
   );
+
 
   const { data: upvoters } = await adminClient
     .from("request_votes")
@@ -61,7 +66,7 @@ if (updateError) {
         await resend.emails.send({
           from: FROM_EMAIL,
           to: email,
-          subject: `${trimmedName} is now on Faculty Review ✨`,
+          subject: `${trimmedName} is now on Faculty Review `,
           html: `
             <p>${trimmedName} is now available.</p>
             <a href="${appUrl}/faculty/${facultyId}">

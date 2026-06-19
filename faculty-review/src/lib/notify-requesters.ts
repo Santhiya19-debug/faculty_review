@@ -36,16 +36,18 @@ export async function notifyAndFulfillRequests(
 
   const uniqueUserIds = [...userIdSet];
 
-  adminClient
-    .from("faculty_requests")
-    .update({ status: "fulfilled" })
-    .in("id", requestIds)
-    .then()
-    .catch(console.error);
+  const { error: updateError } = await adminClient
+  .from("faculty_requests")
+  .update({ status: "fulfilled" })
+  .in("id", requestIds);
+
+if (updateError) {
+  console.error(updateError);
+}
 
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
-    "https://your-app.vercel.app";
+    "https://faculty-review-vit-vellore-dun.vercel.app/";
 
   await Promise.all(
     uniqueUserIds.map(async (userId) => {

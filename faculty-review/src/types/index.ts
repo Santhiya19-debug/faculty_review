@@ -13,6 +13,8 @@ export interface Department {
   icon: string | null;
   school_id: string | null;
   created_at?: string;
+  last_reviewed_at?: string | null;
+  // Joined relations
   schools?: School;
 }
 

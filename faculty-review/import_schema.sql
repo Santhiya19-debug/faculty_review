@@ -60,8 +60,4 @@ ALTER TABLE faculty_reviews ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Schools public read" ON schools FOR SELECT USING (true);
 CREATE POLICY "Faculty reviews public read" ON faculty_reviews FOR SELECT USING (true);
 
--- ==============================================
--- HOW TO USE:
--- 1. Run THIS file first (import_schema.sql)
--- 2. Then run import/import_data.sql
--- ==============================================
+

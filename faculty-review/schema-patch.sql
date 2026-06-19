@@ -19,18 +19,4 @@ CREATE POLICY "Request comments public read" ON request_comments FOR SELECT USIN
 CREATE POLICY "Auth users create request comment" ON request_comments FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users delete own request comment" ON request_comments FOR DELETE USING (auth.uid() = user_id);
 
--- =============================================
--- HOW TO DISABLE EMAIL CONFIRMATION (Section 3)
--- =============================================
--- This cannot be done via SQL — do it in the Supabase Dashboard:
---
--- 1. Go to your Supabase project dashboard
--- 2. Click "Authentication" in the left sidebar
--- 3. Click "Providers" tab
--- 4. Find "Email" provider and click it
--- 5. Toggle OFF "Confirm email"
--- 6. Click "Save"
---
--- After this, users who sign up will be logged in immediately
--- without needing to verify their email address.
--- =============================================
+

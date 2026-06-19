@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   title: "Faculty Review — Find, Review, Improve Together",
   description: "Share honest feedback about your faculty and help build a better learning experience for everyone.",
   keywords: ["faculty review", "student feedback", "professor rating", "college review"],
+  verification: {
+  google: "Mtzd27ELf5dYCSuDF6HoMMKp1_MznXhDLyEZ3sLDwSI",
+},
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

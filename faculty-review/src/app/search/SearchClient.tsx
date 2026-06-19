@@ -153,6 +153,7 @@ export default function SearchClient() {
          is_verified,
          school_id,
          department_id,
+         last_reviewed_at,
          departments ( id, name, icon, slug ),
          schools ( id, name )`,
         { count: "exact" }

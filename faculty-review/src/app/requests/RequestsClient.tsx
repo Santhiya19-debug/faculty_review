@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, ChevronUp, X, MessageSquare, Send } from "lucide-react";
+import { Plus, ChevronUp, X, MessageSquare, Send, PenLine } from "lucide-react";
+import ReviewFromRequestForm from "@/components/requests/ReviewFromRequestForm";
 import { Department, FacultyRequest } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -146,6 +147,7 @@ export default function RequestsClient({ initialRequests, departments, currentUs
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [reviewingRequest, setReviewingRequest] = useState<FacultyRequest | null>(null);
   const { user } = useAuth();
   const supabase = createClient();
 
@@ -246,8 +248,20 @@ export default function RequestsClient({ initialRequests, departments, currentUs
               </div>
 
               {/* Content */}
+              {/* Content */}
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-800 mb-0.5">{req.faculty_name}</h3>
+                <div className="flex items-start justify-between gap-2 mb-0.5">
+                  <h3 className="font-semibold text-gray-800">{req.faculty_name}</h3>
+                  {user && (
+                    <button
+                      onClick={() => setReviewingRequest(req)}
+                      className="shrink-0 flex items-center gap-1 text-xs font-semibold text-blush-500 hover:text-blush-600 bg-blush-50 hover:bg-blush-100 border border-blush-100 px-2 py-1 rounded-xl transition-all"
+                    >
+                      <PenLine size={11} />
+                      Review
+                    </button>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {req.departments && (
                     <span className="badge bg-blush-50 text-blush-600 border border-blush-100">
@@ -272,6 +286,16 @@ export default function RequestsClient({ initialRequests, departments, currentUs
           ))
         )}
       </div>
+
+      {/* Feature 2: Review from request modal */}
+      <AnimatePresence>
+        {reviewingRequest && (
+          <ReviewFromRequestForm
+            facultyName={reviewingRequest.faculty_name}
+            onClose={() => setReviewingRequest(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Request form modal */}
       <AnimatePresence>

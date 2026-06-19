@@ -180,6 +180,7 @@ export default function RequestsClient({ initialRequests, departments, currentUs
     setLoading(true);
     const { error } = await supabase.from("faculty_requests").insert({
       user_id: user.id,
+      user_email: user.email,
       faculty_name: facultyName.trim(),
       department_id: deptId || null,
       subject: subject.trim() || null,

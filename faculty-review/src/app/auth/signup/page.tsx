@@ -34,7 +34,7 @@ export default function SignupPage() {
     }
   };
 
-  const sampleUsernames = ["deadline_Survivor", "ProxyDealer````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````", "internalmarksvictim"];
+  const sampleUsernames = ["deadline_Survivor", "ProxyDealer", "internalmarksvictim"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-petal to-blush-50 flex items-center justify-center p-4">

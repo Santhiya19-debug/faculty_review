@@ -6,6 +6,6 @@ if (!process.env.RESEND_API_KEY) {
 
 export const resend = new Resend(process.env.RESEND_API_KEY || "");
 
-export const FROM_EMAIL = "Faculty Review <notifications@facultyreview.in>";
+export const FROM_EMAIL = "Faculty Review <onboarding@resend.dev>";
 // Replace yourdomain.com with your verified Resend domain
 // During testing you can use: onboarding@resend.dev (Resend's test sender)

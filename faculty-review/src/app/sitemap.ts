@@ -1,7 +1,28 @@
 import { MetadataRoute } from "next";
+import { createClient } from "@supabase/supabase-js";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://faculty-review-vit-vellore-dun.vercel.app";
+const baseUrl = "https://faculty-review-vit-vellore-dun.vercel.app";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const { data: faculties, error } = await supabase
+    .from("faculties")
+    .select("id");
+
+  if (error) {
+    console.error("Sitemap faculty fetch failed:", error);
+  }
+
+  const facultyUrls =
+    faculties?.map((faculty) => ({
+      url: `${baseUrl}/faculty/${faculty.id}`,
+      lastModified: new Date(),
+      priority: 0.9,
+    })) || [];
 
   return [
     {
@@ -29,5 +50,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       priority: 0.7,
     },
+    ...facultyUrls,
   ];
 }

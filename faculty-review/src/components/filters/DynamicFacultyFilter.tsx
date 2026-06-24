@@ -46,44 +46,46 @@ export default function DynamicFacultyFilter({
   const [filteredFaculties, setFilteredFaculties] = useState<Faculty[]>([]);
 
   const [loading, setLoading] = useState(false);
+// Fetch schools, departments and faculties on mount
+useEffect(() => {
+  const fetchData = async () => {
+    setLoading(true);
 
-  // Fetch schools on mount
-  useEffect(() => {
-    const fetchSchools = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("schools")
-        .select("*")
-        .order("name");
-      if (!error && data) setSchools(data);
-      setLoading(false);
-    };
-    fetchSchools();
-  }, []);
+    const [schoolsRes, departmentsRes, facultiesRes] =
+      await Promise.all([
+        supabase
+          .from("schools")
+          .select("*")
+          .order("name"),
 
-  // Fetch all departments on mount
-  useEffect(() => {
-    const fetchDepts = async () => {
-      const { data, error } = await supabase
-        .from("departments")
-        .select("*")
-        .order("name");
-      if (!error && data) setDepartments(data);
-    };
-    fetchDepts();
-  }, []);
+        supabase
+          .from("departments")
+          .select("*")
+          .order("name"),
 
-  // Fetch all faculties on mount (for search)
-  useEffect(() => {
-    const fetchFaculties = async () => {
-      const { data, error } = await supabase
-        .from("faculties")
-        .select("*")
-        .order("faculty_name");
-      if (!error && data) setFaculties(data);
-    };
-    fetchFaculties();
-  }, []);
+        supabase
+          .from("faculties")
+          .select("*")
+          .order("faculty_name"),
+      ]);
+
+    if (!schoolsRes.error && schoolsRes.data) {
+      setSchools(schoolsRes.data);
+    }
+
+    if (!departmentsRes.error && departmentsRes.data) {
+      setDepartments(departmentsRes.data);
+    }
+
+    if (!facultiesRes.error && facultiesRes.data) {
+      setFaculties(facultiesRes.data);
+    }
+
+    setLoading(false);
+  };
+
+  fetchData();
+}, []);
 
   // Filter departments when school changes
   useEffect(() => {

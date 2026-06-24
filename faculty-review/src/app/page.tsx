@@ -10,25 +10,35 @@ import RequestCTA from "@/components/shared/RequestCTA";
 export default async function HomePage() {
   const supabase = await createClient();
 
-  // Top rated faculties — join departments and schools
-  const { data: topFaculties } = await supabase
-    .from("faculties")
-    .select("*, departments(*), schools(*)")
-    .order("overall_rating", { ascending: false })
-    .limit(8);
+ // Top rated faculties — join departments and schools
+const topFacultiesPromise = supabase
+  .from("faculties")
+  .select("*, departments(*), schools(*)")
+  .order("overall_rating", { ascending: false })
+  .limit(8);
 
-  // Recent user-submitted reviews
-  const { data: recentReviews } = await supabase
-    .from("reviews")
-    .select("*, profiles(username), faculties(name, id)")
-    .order("created_at", { ascending: false })
-    .limit(4);
+// Recent user-submitted reviews
+const recentReviewsPromise = supabase
+  .from("reviews")
+  .select("*, profiles(username), faculties(name, id)")
+  .order("created_at", { ascending: false })
+  .limit(4);
 
-  // Schools for hero section search dropdown
-  const { data: schools } = await supabase
-    .from("schools")
-    .select("*")
-    .order("name");
+// Schools for hero section search dropdown
+const schoolsPromise = supabase
+  .from("schools")
+  .select("*")
+  .order("name");
+
+const [
+  { data: topFaculties },
+  { data: recentReviews },
+  { data: schools },
+] = await Promise.all([
+  topFacultiesPromise,
+  recentReviewsPromise,
+  schoolsPromise,
+]);
 
   return (
   <MainLayout>
